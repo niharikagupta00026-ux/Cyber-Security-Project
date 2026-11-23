@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VPN Traffic Analysis Lab</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="layout">
+
+  <!-- ===================== SIDEBAR ===================== -->
+  <aside class="sidebar">
+
+    <div class="logo-row">
+      <svg class="icon" viewBox="0 0 24 24">
+        <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/>
+        <path d="M9.5 12l2 2 3.5-4"/>
+      </svg>
+
+      <div>
+        <div class="logo-title">VPN Traffic<br>Analysis Lab</div>
+        <div class="logo-sub">Network Security Project</div>
+      </div>
+    </div>
+
+    <button class="nav-item active" data-page="capture" onclick="showPage('capture')">
+      <svg class="icon" viewBox="0 0 24 24">
+        <path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>
+      </svg>
+      Capture
+    </button>
+
+    <button class="nav-item" data-page="experiments" onclick="showPage('experiments')">
+      <svg class="icon" viewBox="0 0 24 24">
+        <path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>
+      </svg>
+      Experiments
+    </button>
+
+    <button class="nav-item" data-page="methodology" onclick="showPage('methodology')">
+      <svg class="icon" viewBox="0 0 24 24">
+        <path d="M6 3h9l4 4v14H6z"/>
+        <path d="M14 3v5h5M9 13h7M9 17h7"/>
+      </svg>
+      Methodology
+    </button>
+
+    <button class="nav-item" data-page="about" onclick="showPage('about')">
+      <svg class="icon" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M12 8v.01M12 11v5"/>
+      </svg>
+      About
+    </button>
+
+    <div class="side-foot">
+      <strong>Niharika Gupta</strong>
+      Cyber Security Project<br>
+      2026
+    </div>
+
+  </aside>
+
+  <!-- ===================== MAIN ===================== -->
+  <main class="main">
+
+    <header class="topbar">
+      <div>
+        <h1 class="title-main">
+          <span class="gold">VPN</span> Traffic Analysis Lab
+        </h1>
+
+        <p class="subtitle">
+          Live packet capture and heuristic traffic classification
+        </p>
+      </div>
+
+      <div class="pill">
+        <span class="dot" id="backendDot"></span>
+        <span id="backendText">Checking backend…</span>
+      </div>
+    </header>
+
+    <!-- ===================== PAGE: CAPTURE ===================== -->
+    <section id="page-capture" class="page">
+
+      <div class="card">
+
+        <div class="card-head">
+          <svg class="icon" viewBox="0 0 24 24">
+            <rect x="3" y="4" width="18" height="12" rx="2"/>
+            <path d="M8 20h8M12 16v4"/>
+          </svg>
+
+          <h2>Live Capture</h2>
+        </div>
+
+        <div class="form-row">
+
+          <div class="field grow">
+            <label for="ifaceSelect">Network adapter</label>
+
+            <div class="select-wrap">
+              <select id="ifaceSelect">
+                <option value="">Loading adapters…</option>
+              </select>
+
+              <button class="icon-btn" onclick="loadInterfaces()" title="Refresh adapters">
+                <svg class="icon" viewBox="0 0 24 24">
+                  <path d="M20 11a8 8 0 1 0-2.3 5.7"/>
+                  <path d="M20 4v7h-7"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="field dur">
+            <label for="durationInput">Capture duration (seconds)</label>
+            <input
+              type="number"
+              id="durationInput"
+              value="15"
+              min="3"
+              max="60"
+              step="1"
+            >
+          </div>
+
+          <button class="gold-btn" id="captureBtn" onclick="startCapture()">
+            <svg class="icon" viewBox="0 0 24 24" style="fill: currentColor; stroke: none;">
+              <path d="M7 5v14l12-7z"/>
+            </svg>
+            Start Live Capture
+          </button>
+
+        </div>
+
+        <div class="progress">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+
+        <p class="hint" id="hintText">
+          Generate some traffic during the capture, for example by opening a website.
+          Payloads are never decrypted or stored.
+        </p>
+
+        <div id="errorBox" class="error-box"></div>
+
+      </div>
+
+      <!-- ===================== STAT CARDS ===================== -->
+      <div class="stats-row">
+
+        <div class="stat-card t-blue">
+          <div class="stat-icon">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M12 3l9 5-9 5-9-5 9-5z"/>
+              <path d="M3 13l9 5 9-5"/>
+            </svg>
+          </div>
+
+          <div>
+            <div class="stat-label">Total Packets</div>
+            <div class="stat-value" id="stPackets">--</div>
+          </div>
+
+          <div class="spark" id="spPackets"></div>
+        </div>
+
+        <div class="stat-card t-violet">
+          <div class="stat-icon">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M6 3h8l4 4v14H6z"/>
+              <path d="M14 3v4h4"/>
+            </svg>
+          </div>
+
+          <div>
+            <div class="stat-label">Average Packet Size</div>
+            <div class="stat-value" id="stAvg">--</div>
+          </div>
+
+          <div class="spark" id="spAvg"></div>
+        </div>
+
+        <div class="stat-card t-teal">
+          <div class="stat-icon">
+            <svg class="icon" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="9"/>
+              <path d="M12 7v5l3 2"/>
+            </svg>
+          </div>
+
+          <div>
+            <div class="stat-label">Capture Span</div>
+            <div class="stat-value" id="stSpan">--</div>
+          </div>
+
+          <div class="spark" id="spSpan"></div>
+        </div>
+
+        <div class="stat-card t-gold">
+          <div class="stat-icon">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M3 12h4l2-5 4 10 2-5h6"/>
+            </svg>
+          </div>
+
+          <div>
+            <div class="stat-label">Inter-Arrival Intervals</div>
+            <div class="stat-value" id="stIntervals">--</div>
+          </div>
+
+          <div class="spark" id="spIntervals"></div>
+        </div>
+
+      </div>
+
+      <!-- ===================== PACKET CHART ===================== -->
+      <div class="card">
+
+        <div class="card-head">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M3 17l5-5 4 4 8-9"/>
+          </svg>
+
+          <h2>Traffic over time: packets per second</h2>
+
+          <span class="muted" id="liveNote" style="font-size:12.5px;"></span>
+        </div>
+
+        <div id="liveChart">
+          <p class="muted">
+            The chart appears after a capture finishes.
+            It shows packets per second, counted from the first captured packet.
+          </p>
+        </div>
+
+      </div>
+
+      <!-- ===================== BYTE CHART ===================== -->
+      <div class="card">
+
+        <div class="card-head">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M4 18V6M10 18V10M16 18V3M22 18V8"/>
+          </svg>
+
+          <h2>Traffic volume over time: bytes per second</h2>
+
+          <span class="muted" id="bytesNote" style="font-size:12.5px;"></span>
+        </div>
+
+        <div id="bytesChart">
+          <p class="muted">
+            Byte-rate chart appears from captured packet lengths.
+          </p>
+        </div>
+
+      </div>
+
+      <!-- ===================== CLASSIFICATION ===================== -->
+      <div class="grid grid-2">
+
+        <div class="card">
+
+          <div class="card-head">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/>
+            </svg>
+
+            <h2>Traffic Classification</h2>
+          </div>
+
+          <div class="verdict-row">
+            <span class="verdict-pill" id="verdictPill">
+              No result yet
+            </span>
+
+            <div class="score-big">
+              <span id="scoreValue">--</span>
+              <small> / 100</small>
+            </div>
+          </div>
+
+          <p class="reason" id="reasonText">
+            Run a capture to see the result.
+          </p>
+
+          <div class="score-track">
+            <div class="score-fill" id="scoreFill"></div>
+            <span class="marker" style="left:40%;"></span>
+            <span class="marker" style="left:60%;"></span>
+          </div>
+
+          <div class="scale">
+            <span style="left:0; transform:none;">0</span>
+            <span style="left:40%;">40</span>
+            <span style="left:60%;">60</span>
+            <span style="left:100%; transform:translateX(-100%);">100</span>
+          </div>
+
+          <p class="note-small">
+            Gold markers at 40 and 60 are manually chosen thresholds,
+            not statistically derived. The score is not a probability.
+          </p>
+
+          <!-- Automatic saving status -->
+          <div class="save-row">
+            <span id="saveMsg" class="msg">
+              Each completed capture is automatically classified and saved.
+            </span>
+          </div>
+
+        </div>
+
+        <!-- ===================== FEATURE SCORES ===================== -->
+        <div class="card">
+
+          <div class="card-head">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M5 20V12M12 20V5M19 20v-9"/>
+            </svg>
+
+            <h2>Feature Scores</h2>
+          </div>
+
+          <p class="card-sub">
+            Each feature scaled to 0 to 100%, before its manual weight is applied.
+          </p>
+
+          <div id="featureBars"></div>
+
+        </div>
+
+      </div>
+
+      <!-- ===================== PROTOCOL AND PACKET DETAILS ===================== -->
+      <div class="grid grid-3">
+
+        <div class="card">
+
+          <div class="card-head">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M12 3v9h9"/>
+              <path d="M19 12a7 7 0 1 1-7-7"/>
+            </svg>
+
+            <h2>Protocol Distribution</h2>
+          </div>
+
+          <div class="donut-wrap">
+            <div id="donutBox"></div>
+            <div id="donutLegend" style="flex:1;"></div>
+          </div>
+
+        </div>
+
+        <div class="card">
+
+          <div class="card-head">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M5 20V12M10 20V6M15 20v-9M20 20V9"/>
+            </svg>
+
+            <h2>Packet Size Distribution</h2>
+          </div>
+
+          <div id="histBox"></div>
+
+        </div>
+
+        <div class="card">
+
+          <div class="card-head">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>
+            </svg>
+
+            <h2 id="sampleTitle">Packet Summary (first 10)</h2>
+
+            <button class="link-btn" id="sampleToggle" onclick="toggleSample()">
+              View All
+            </button>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Time (s)</th>
+                  <th>Protocol</th>
+                  <th>Src Port</th>
+                  <th>Dst Port</th>
+                  <th>Size (B)</th>
+                </tr>
+              </thead>
+
+              <tbody id="sampleBody"></tbody>
+            </table>
+          </div>
+
+          <p class="note-small">
+            Metadata only: no IP addresses and no payloads.
+          </p>
+
+        </div>
+
+      </div>
+
+      <!-- ===================== TOR AND INTERVAL ANALYSIS ===================== -->
+      <div class="grid grid-2" style="margin-top:18px;">
+
+        <div class="card">
+
+          <div class="card-head">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/>
+              <circle cx="12" cy="12" r="2.5"/>
+            </svg>
+
+            <h2>Tor Exit-Node Analysis</h2>
+
+            <span class="muted" id="torStatus" style="font-size:12px;">
+              Waiting for capture
+            </span>
+          </div>
+
+          <p class="card-sub">
+            Captured IPv4 source/destination addresses are compared in memory
+            with the public Tor Project exit-node list. IP addresses are never
+            displayed or saved.
+          </p>
+
+          <div class="stats-row" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px;">
+
+            <div class="stat-card">
+              <div>
+                <div class="stat-label">IPv4 packets checked</div>
+                <div class="stat-value" id="torChecked">--</div>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div>
+                <div class="stat-label">Tor-list matches</div>
+                <div class="stat-value" id="torMatches">--</div>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div>
+                <div class="stat-label">Exit nodes in list</div>
+                <div class="stat-value" id="torListSize">--</div>
+              </div>
+            </div>
+
+          </div>
+
+          <p class="note-small" id="torExplanation">
+            Run a capture to compare observed IPv4 packet endpoints with
+            the Tor exit-node list. A zero match does not rule out Tor usage.
+          </p>
+
+        </div>
+
+        <div class="card">
+
+          <div class="card-head">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M4 18h16M6 14h2M10 10h2M14 6h2M18 2h2"/>
+            </svg>
+
+            <h2>Inter-arrival Time Distribution</h2>
+          </div>
+
+          <div id="intervalChart">
+            <p class="muted">
+              Shows the distribution of gaps between captured packet timestamps.
+            </p>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ===================== PAGE: EXPERIMENTS ===================== -->
+    <section id="page-experiments" class="page hidden">
+
+      <div class="card">
+
+        <div class="exp-bar">
+
+          <div class="exp-actions">
+            <button class="outline-btn" onclick="loadExperiments()">
+              Refresh
+            </button>
+
+            <a
+              class="outline-btn"
+              href="/experiments.csv"
+              download
+              style="display:inline-flex;align-items:center;text-decoration:none;"
+            >
+              Export CSV
+            </a>
+          </div>
+
+          <span class="muted" id="expCount" style="font-size:12.5px;"></span>
+
+        </div>
+
+        <p id="expMsg" class="msg" style="margin:12px 0 0;"></p>
+
+      </div>
+
+      <!-- ===================== COMPARISON ===================== -->
+      <div class="card">
+
+        <div class="card-head">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>
+          </svg>
+
+          <h2>Comparison by label</h2>
+        </div>
+
+        <p class="card-sub">
+          Simple averages of your saved runs. A few runs cannot show a
+          reliable difference. Accuracy, precision, recall and F1 need
+          enough labelled test captures first.
+        </p>
+
+        <div class="table-wrap">
+          <table>
+
+            <thead>
+              <tr>
+                <th class="left">Label</th>
+                <th>Runs</th>
+                <th>Avg score</th>
+                <th>Avg norm. entropy</th>
+                <th>Avg VPN-port ratio</th>
+                <th>Avg frame (B)</th>
+                <th>Avg gap (ms)</th>
+                <th>Avg packets</th>
+              </tr>
+            </thead>
+
+            <tbody id="compareBody"></tbody>
+
+          </table>
+        </div>
+
+      </div>
+
+      <!-- ===================== SCORE CHART ===================== -->
+      <div class="card">
+
+        <div class="card-head">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M3 17l5-5 4 4 8-9"/>
+          </svg>
+
+          <h2>Heuristic score per saved run</h2>
+        </div>
+
+        <p class="card-sub">
+          Each bar is one saved run. Dashed gold lines are the manually
+          chosen thresholds at 40 and 60.
+        </p>
+
+        <div id="scoreChart"></div>
+
+        <div class="legend">
+
+          <span>
+            <span class="swatch" style="background:#3F7A72;width:10px;height:10px;"></span>
+            Normal-like traffic
+          </span>
+
+          <span>
+            <span class="swatch" style="background:#A8844A;width:10px;height:10px;"></span>
+            VPN-like traffic
+          </span>
+
+          <span>
+            <span class="swatch" style="background:#9AA3AD;width:10px;height:10px;"></span>
+            Inconclusive
+          </span>
+
+        </div>
+
+      </div>
+
+      <!-- ===================== SAVED RUNS ===================== -->
+      <div class="card">
+
+        <div class="card-head">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>
+          </svg>
+
+          <h2>Saved runs</h2>
+        </div>
+
+        <div class="table-wrap">
+
+          <table style="min-width:760px;">
+
+            <thead>
+              <tr>
+                <th class="left">#</th>
+                <th class="left">Label</th>
+                <th class="left">Captured (UTC)</th>
+                <th class="left">Interface</th>
+                <th>Packets</th>
+                <th>Score</th>
+                <th class="left">Result</th>
+                <th></th>
+              </tr>
+            </thead>
+
+            <tbody id="expBody"></tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ===================== PAGE: METHODOLOGY ===================== -->
+    <section id="page-methodology" class="page hidden doc">
+
+      <div class="card">
+
+        <h3>Objective</h3>
+
+        <p>
+          This tool captures real packets from a network adapter you are
+          authorised to monitor, and measures observable metadata:
+          packet sizes, ports, timing and the randomness of payload bytes.
+          It gives a heuristic score that describes how closely the traffic
+          pattern resembles typical VPN traffic.
+        </p>
+
+        <h3>Packet capture</h3>
+
+        <p>
+          The browser sends the chosen adapter and duration to the server
+          with <code>POST /capture/start</code> and
+          <code>GET /capture/status</code>. The server runs Scapy's
+          <code>sniff()</code> on that adapter for the chosen duration,
+          up to 20,000 packets, then analyses the packets and returns
+          the result. The page polls capture status while the backend
+          captures packets, then displays the final analysis.
+          Capturing needs administrator or root privileges and a
+          packet-capture driver (Npcap on Windows, libpcap on Linux and macOS).
+        </p>
+
+        <h3>Features</h3>
+
+        <p>
+          <strong>Payload entropy:</strong> Shannon entropy of each payload
+          of at least 64 bytes, normalised by the maximum that payload length
+          can reach. Encrypted data looks random, but HTTPS does too,
+          so this is not proof of a VPN.
+        </p>
+
+        <p>
+          <strong>VPN port matches:</strong> the share of TCP and UDP packets
+          that use a well-known VPN default port (1194, 51820, 500, 4500,
+          1701). VPNs can use any port, so this is only an indicator.
+        </p>
+
+        <p>
+          <strong>Packet size:</strong> mean frame size relative to a reference
+          of 1400 bytes. Many packets are close to that size, so this feature is weak.
+        </p>
+
+        <p>
+          <strong>Timing regularity:</strong> the coefficient of variation
+          of gaps between packets across the whole capture.
+          This is not per-flow timing.
+        </p>
+
+        <h3>Scoring</h3>
+
+        <div class="formula">
+          score = 45 × entropy + 35 × vpn_port + 10 × packet_size + 10 × timing_regularity
+        </div>
+
+        <p>
+          Each feature is between 0 and 1, so the score is between 0 and 100.
+          The weights and thresholds (VPN-like at 60 or above, normal-like
+          at 40 or below) are manually chosen heuristic parameters.
+          They are not calibrated on data and must be evaluated with labelled experiments.
+        </p>
+
+        <h3>Inconclusive results</h3>
+
+        <p>
+          The result is inconclusive when there are fewer than 50 packets,
+          fewer than 20 payload samples, or a score between the two thresholds.
+        </p>
+
+        <h3>Traffic graph</h3>
+
+        <p>
+          The graph counts captured packets in one-second buckets,
+          starting from the first captured packet. It is drawn after
+          the capture finishes and is not a live stream.
+        </p>
+
+        <h3>Experiments</h3>
+
+        <p>
+          After each capture, the classifier automatically assigns
+          "Normal-like", "VPN-like" or "Inconclusive" and saves the summary.
+          These are heuristic predictions, not proof of VPN use.
+          Saved runs are stored locally as summary numbers only,
+          and can be exported to CSV.
+        </p>
+
+      </div>
+
+      <div class="note">
+        <strong>Limitations:</strong>
+        HTTPS and other encrypted traffic can look like VPN traffic,
+        and VPN traffic can look like normal traffic. The score is not
+        a probability and does not prove that a VPN is in use.
+        Results depend on the adapter chosen: a physical adapter and
+        a VPN virtual adapter show different packets.
+      </div>
+
+      <div class="note" style="border-left-color: var(--navy);">
+        <strong>Privacy:</strong>
+        only packet metadata is used. Payloads are never decrypted
+        or saved, and IP addresses are not displayed or stored.
+      </div>
+
+    </section>
+
+    <!-- ===================== PAGE: ABOUT ===================== -->
+    <section id="page-about" class="page hidden doc">
+
+      <div class="card">
+
+        <h3>What this project is</h3>
+
+        <p>
+          A local web application that captures live packets from a Wi-Fi
+          or Ethernet adapter and analyses their metadata to suggest whether
+          the traffic pattern looks like VPN traffic.
+          It is a heuristic lab tool for a cyber security project,
+          not a VPN or anonymity detector.
+        </p>
+
+        <h3>Technologies</h3>
+
+        <p>
+          Python, Flask (web server), Scapy (packet capture), HTML, CSS
+          and vanilla JavaScript. Charts are drawn with plain SVG,
+          so there are no external chart libraries.
+        </p>
+
+        <h3>How to run (Windows)</h3>
+
+        <p>
+          1. Install Npcap. It comes with Wireshark, or can be installed separately.<br>
+          2. Open the project folder in a terminal run as Administrator.<br>
+          3. Run <code>pip install -r requirements.txt</code>, then <code>python app.py</code>.<br>
+          4. Open <code>http://127.0.0.1:5000</code> in your browser.
+        </p>
+
+        <h3>Authorised use</h3>
+
+        <p>
+          Capture only on your own machine and on networks you are allowed
+          to monitor. The tool does not decrypt traffic, collect credentials,
+          or store payloads.
+        </p>
+
+      </div>
+
+      <div class="note">
+        Tor exit-node matching is included as a supplementary analysis.
+        It reports packet match counts only; it does not prove Tor Browser usage.
+      </div>
+
+    </section>
+
+    <footer>
+      VPN Traffic Analysis Lab · Cyber Security project · 2026
+    </footer>
+
+  </main>
+
+</div>
+
+<script src="script.js"></script>
+
+</body>
+</html>
