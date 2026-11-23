@@ -14,4 +14,4 @@ A cybersecurity project that captures live network packets and analyses traffic 
 ### Tech Stack
 Python, Flask, Scapy, HTML, CSS and JavaScript.
 
-**Note:** This project uses heuristic-based analysis. It indicates VPN-like traffic but does not guarantee VPN detection.
+
